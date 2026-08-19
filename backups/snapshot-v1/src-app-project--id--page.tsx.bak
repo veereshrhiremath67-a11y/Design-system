@@ -1,0 +1,2121 @@
+"use client"
+
+import { use, useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
+import { redirect } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Palette, ArrowLeft, Eye, Edit3, Loader2, Check, X, Accessibility,
+  Sparkles, Type, Layout, Layers, Grid3X3, Monitor, FileText, ChevronRight,
+  Image as ImageIcon, Boxes, BarChart3, Repeat2, Maximize, Info, Zap, Star,
+  Hexagon, ScrollText, Search, Settings, User, Bell, Heart, Menu, Plus, Home, ArrowUp,
+  X as CloseIcon, type LucideIcon
+} from "lucide-react"
+import Link from "next/link"
+import { ExportDropdown } from "@/components/export-dropdown"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { toast } from "sonner"
+
+interface DesignData {
+  systemName?: string
+  version?: string
+  lastUpdated?: string
+  overview?: any
+  colorSystemDoc?: any
+  typographyDoc?: any
+  systemArchitecture?: any
+  brandFoundation: any
+  designPrinciples: string[]
+  tokens: any
+  colorSystem: any
+  typography: any
+  spacingLayout: any
+  components: any[]
+  patterns: any[]
+  accessibility: any
+  motion: any
+  dataViz: any
+  documentation: any
+}
+
+const NAV_ITEMS = [
+  { id: "overview", label: "Overview & Design Principles", icon: ScrollText },
+  { id: "appearance", label: "Appearance", icon: Monitor },
+  { id: "brand", label: "Brand", icon: Sparkles },
+  { id: "colors", label: "Color System", icon: Palette },
+  { id: "typography", label: "Typography & Type Scale", icon: Type },
+  { id: "spacing", label: "Spacing", icon: Grid3X3 },
+  { id: "grid", label: "Grid & Layout", icon: Layout },
+  { id: "iconography", label: "Iconography", icon: ImageIcon },
+  { id: "elevation", label: "Elevation & Surfaces", icon: Boxes },
+  { id: "components", label: "Components", icon: Layers },
+  { id: "patterns", label: "Patterns", icon: Layout },
+  { id: "motion", label: "Motion", icon: Monitor },
+  { id: "dataviz", label: "Data Viz", icon: BarChart3 },
+  { id: "accessibility", label: "Accessibility", icon: Accessibility },
+  { id: "docs", label: "Documentation", icon: FileText },
+]
+
+export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const { data: session, status } = useSession()
+  const [project, setProject] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeSection, setActiveSection] = useState("overview")
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetch(`/api/projects/${id}`)
+        .then((res) => res.json())
+        .then(setProject)
+        .catch(() => toast.error("Failed to load project"))
+        .finally(() => setLoading(false))
+    }
+  }, [status, id])
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") redirect("/login")
+  if (!project) return <div className="flex-1 flex items-center justify-center text-muted-foreground">Project not found</div>
+
+  const designDataRaw = typeof project.designData === "string" ? JSON.parse(project.designData) : project.designData
+  const d: DesignData = designDataRaw
+  const primary = d.tokens?.colors?.primary || "#6366f1"
+
+  return (
+    <div className="h-screen overflow-hidden flex flex-col">
+      <header className="shrink-0 border-b bg-background z-10">
+        <div className="flex items-center justify-between h-16 px-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: primary }}>
+              <Palette className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <span className="font-bold text-base truncate block max-w-[200px]">{project.name}</span>
+              <span className="text-xs text-muted-foreground">{d.brandFoundation?.brandName || project.brandName}</span>
+            </div>
+            <Badge variant="secondary" className="text-xs">{project.status}</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href={`/preview?id=${id}`}>
+              <Button variant="outline" size="sm">
+                <Eye className="mr-1.5 h-3.5 w-3.5" />
+                Preview
+              </Button>
+            </Link>
+            <Link href={`/create?edit=${id}`}>
+              <Button variant="outline" size="sm">
+                <Edit3 className="mr-1.5 h-3.5 w-3.5" />
+                Edit
+              </Button>
+            </Link>
+            <ThemeToggle />
+            <ExportDropdown projectId={id} />
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 flex overflow-hidden">
+        <aside className="w-56 border-r bg-muted/20 hidden md:flex flex-col shrink-0">
+          <ScrollArea className="flex-1 py-3 px-2">
+            <nav className="space-y-0.5">
+              {NAV_ITEMS.map(({ id: sectionId, label, icon: Icon }) => (
+                <button
+                  key={sectionId}
+                  onClick={() => setActiveSection(sectionId)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors ${
+                    activeSection === sectionId
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {label}
+                  {activeSection === sectionId && (
+                    <ChevronRight className="h-3.5 w-3.5 ml-auto" />
+                  )}
+                </button>
+              ))}
+            </nav>
+          </ScrollArea>
+        </aside>
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="py-4 px-4 sm:px-6 lg:px-8 space-y-4">
+            {activeSection === "overview" && <OverviewSection d={d} />}
+            {activeSection === "appearance" && (
+              <AppearanceSection d={d} primary={primary} />
+            )}
+            {activeSection === "brand" && <BrandSection d={d} />}
+            {activeSection === "colors" && <ColorSystemSection d={d} />}
+            {activeSection === "typography" && <TypographySection d={d} />}
+            {activeSection === "spacing" && <SpacingSection d={d} />}
+            {activeSection === "grid" && <GridSection d={d} />}
+            {activeSection === "iconography" && <IconographySection d={d} />}
+            {activeSection === "elevation" && <ElevationSection d={d} />}
+            {activeSection === "components" && <ComponentsSection d={d} />}
+            {activeSection === "patterns" && <PatternsSection d={d} />}
+            {activeSection === "motion" && <MotionSection d={d} />}
+            {activeSection === "dataviz" && <DataVizSection d={d} />}
+            {activeSection === "accessibility" && <AccessibilitySection d={d} />}
+            {activeSection === "docs" && <DocsSection d={d} />}
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
+
+function SectionHeader({ title, description, icon: Icon }: { title: string; description?: string; icon: any }) {
+  return (
+    <div className="space-y-1 pb-1">
+      <div className="flex items-center gap-2.5">
+        <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
+        <h2 className="text-xl font-bold">{title}</h2>
+      </div>
+      {description && <p className="text-sm text-muted-foreground ml-9">{description}</p>}
+      <Separator className="mt-3" />
+    </div>
+  )
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="p-4 rounded-xl border bg-card">
+      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+      <p className="font-medium text-sm leading-relaxed">{value}</p>
+    </div>
+  )
+}
+
+function DoCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-green-50/50 border border-green-200">
+      <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+      <span className="text-sm text-green-800">{children}</span>
+    </div>
+  )
+}
+
+function DontCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50/50 border border-red-200">
+      <X className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+      <span className="text-sm text-red-800">{children}</span>
+    </div>
+  )
+}
+
+function AppearanceSection({ d, primary }: { d: DesignData; primary: string }) {
+  const radius = d.tokens?.radius || "8px"
+  const shadows = d.tokens?.shadows || {}
+  const fontFamily = d.tokens?.typography?.fontFamily || "Inter, sans-serif"
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Appearance" description="Visual preview of your design system applied to common UI elements" icon={Monitor} />
+
+      <div className="p-4 rounded-xl border space-y-4" style={{ fontFamily }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: primary }}>
+              <Palette className="h-4 w-4 text-white" />
+            </div>
+            <span className="font-bold">Brand</span>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-6 w-12 rounded-full" style={{ backgroundColor: d.tokens?.colors?.primaryLight, borderRadius: radius }} />
+            <div className="h-6 w-12 rounded-full" style={{ backgroundColor: d.tokens?.colors?.secondary, borderRadius: radius }} />
+            <div className="h-6 w-12 rounded-full" style={{ backgroundColor: d.tokens?.colors?.accent, borderRadius: radius }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 rounded-xl border space-y-3" style={{ fontFamily }}>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Typography Preview</p>
+        <p className="text-3xl font-bold leading-tight" style={{ fontFamily: d.typography?.headingFont }}>
+          Heading Level 1
+        </p>
+        <p className="text-2xl font-semibold leading-tight" style={{ fontFamily: d.typography?.headingFont }}>
+          Heading Level 2
+        </p>
+        <p className="text-lg font-medium leading-snug" style={{ fontFamily: d.typography?.headingFont }}>
+          Heading Level 3
+        </p>
+        <p className="text-base leading-relaxed">
+          Body text. The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+          This is how your paragraph text will look across your entire product.
+        </p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Secondary body text for less prominent content. Perfect for descriptions and supporting information.
+        </p>
+        <p className="text-xs text-muted-foreground">Caption and metadata text for small print and labels.</p>
+      </div>
+
+      <div className="p-4 rounded-xl border space-y-4" style={{ fontFamily }}>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Components Preview</p>
+
+        <div className="flex flex-wrap gap-3">
+          <button className="px-5 py-2.5 text-sm font-medium text-white rounded-lg transition-all hover:opacity-90" style={{ backgroundColor: primary, borderRadius: radius }}>
+            Primary Button
+          </button>
+          <button className="px-5 py-2.5 text-sm font-medium rounded-lg border transition-all hover:bg-muted" style={{ borderRadius: radius, borderColor: d.tokens?.colors?.neutral?.[200] || "#e5e5e5" }}>
+            Secondary Button
+          </button>
+          <button className="px-5 py-2.5 text-sm font-medium rounded-lg border-2 transition-all hover:opacity-80" style={{ borderRadius: radius, borderColor: primary, color: primary }}>
+            Outline Button
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <div className="px-3 py-1.5 text-xs font-medium rounded-full" style={{ backgroundColor: d.tokens?.colors?.primaryLight, color: primary }}>
+            Badge
+          </div>
+          <div className="px-3 py-1.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
+            Success
+          </div>
+          <div className="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 text-red-700">
+            Error
+          </div>
+          <div className="px-3 py-1.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700">
+            Warning
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border space-y-3" style={{ borderRadius: radius }}>
+          <p className="font-medium">Sample Card</p>
+          <p className="text-sm text-muted-foreground">This is how a card component renders with your design system tokens applied.</p>
+          <div className="flex gap-2">
+            <button className="px-4 py-1.5 text-xs font-medium text-white rounded-lg" style={{ backgroundColor: primary, borderRadius: radius }}>
+              Action
+            </button>
+            <button className="px-4 py-1.5 text-xs font-medium rounded-lg border" style={{ borderRadius: radius }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="h-10 rounded-lg border px-3 flex items-center text-sm text-muted-foreground" style={{ borderRadius: radius }}>
+            Placeholder text...
+          </div>
+          <div className="h-10 rounded-lg border px-3 flex items-center text-sm gap-2" style={{ borderRadius: radius, borderColor: "#ef4444" }}>
+            <span className="text-red-500">!</span>
+            <span className="text-muted-foreground">Input with error</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 rounded-xl border space-y-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Shadow Samples</p>
+        <div className="flex flex-wrap gap-3">                                                              
+
+
+          {Object.entries(shadows).filter(([k]) => k !== "inner").slice(0, 4).map(([key, val]) => (
+            <div key={key} className="w-28 h-20 rounded-xl flex items-center justify-center text-xs font-medium text-muted-foreground" style={{ boxShadow: val as string, borderRadius: radius }}>
+              {key}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BrandSection({ d }: { d: DesignData }) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Brand Foundation" description="Core brand identity and usage guidelines" icon={Sparkles} />
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <InfoCard label="Brand Name" value={d.brandFoundation?.brandName || "—"} />
+          <InfoCard label="Company" value={d.brandFoundation?.companyName || "—"} />
+          <InfoCard label="Industry" value={d.brandFoundation?.industry || "—"} />
+          <InfoCard label="Brand Voice" value={d.brandFoundation?.voice || "—"} />
+        </div>
+
+        <div className="p-4 rounded-xl border bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Personality</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(d.brandFoundation?.personality || []).map((p: string) => (
+              <Badge key={p}>{p}</Badge>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Keywords</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(d.brandFoundation?.keywords || []).map((k: string) => (
+              <Badge key={k} variant="secondary">{k}</Badge>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border bg-card">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Voice Guidelines</p>
+          <div className="space-y-2">
+            {(d.brandFoundation?.voiceGuidelines || []).map((g: string) => (
+              <div key={g} className="flex items-start gap-2.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0" />
+                <p className="text-sm">{g}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <InfoCard label="Logo Variants" value={(d.brandFoundation?.logoVariations || []).join(", ")} />
+          <InfoCard label="Safe Area" value={d.brandFoundation?.logoSafeArea || "—"} />
+          <InfoCard label="Min Size" value={d.brandFoundation?.minimumLogoSize || "—"} />
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold text-red-600">Incorrect Logo Usage</p>
+          {(d.brandFoundation?.incorrectUsage || []).map((u: string) => (
+            <DontCard key={u}>{u}</DontCard>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const DEFAULT_OVERVIEW_PRINCIPLES = [
+  { title: "Consistency", icon: "Repeat2", description: "Predictable journeys make systems intuitive. Components must behave uniformly across all application contexts." },
+  { title: "Accessibility", icon: "Accessibility", description: "Inclusive design from root variables. AA/AAA compliance as our floor, ensuring usable interfaces for everyone." },
+  { title: "Scalability", icon: "Maximize", description: "Build once, deploy everywhere. Tokenized structure accommodates dynamic growth and multi-platform expansion." },
+  { title: "Clarity", icon: "Info", description: "Maximize signal, minimize noise. Clean hierarchy, balanced spacing, and purposeful color routing over aesthetics." },
+  { title: "Efficiency", icon: "Zap", description: "Optimized developer-to-designer handoff. Standardized slots, variables, and components speed implementation." },
+  { title: "Delight", icon: "Star", description: "Subtle animations, rounded details, and premium typographic pairing that turns utility into joy." },
+]
+
+const OVERVIEW_ICONS: Record<string, any> = {
+  Repeat2,
+  Accessibility,
+  Maximize,
+  Info,
+  Zap,
+  Star,
+  Sparkles,
+}
+
+const DEFAULT_ARCH_STEPS = [
+  { step: 1, name: "Design Tokens", contents: "Variables: Color, Typography, Spacing", background: "#F8FAFC", color: "#0F172A" },
+  { step: 2, name: "Foundation", contents: "Gradients, Icons, Base Grid rules", background: "#E0E7FF", color: "#4F46E5" },
+  { step: 3, name: "Components", contents: "Buttons, Inputs, Badges, Toggles", background: "#C7D2FE", color: "#3730A3" },
+  { step: 4, name: "Patterns", contents: "Forms, Headers, Tables, Lists", background: "#818CF8", color: "#FFFFFF" },
+  { step: 5, name: "Templates", contents: "Standard Screen Scaffolding", background: "#4F46E5", color: "#FFFFFF" },
+]
+
+const SERIF = { fontFamily: "'Playfair Display', Georgia, Cambria, 'Times New Roman', serif" }
+
+function OverviewSection({ d }: { d: DesignData }) {
+  const overview = d.overview || {}
+  const systemName = overview.footerLeft?.split(" — ")[0] || d.systemName || "Design System"
+  const version = overview.version || d.version || "v2.0.0"
+  const principles = overview.principles?.length ? overview.principles : DEFAULT_OVERVIEW_PRINCIPLES
+  const arch = d.systemArchitecture || {}
+  const archSteps = overview.architectureSteps?.length
+    ? overview.architectureSteps
+    : arch.layers?.length
+      ? arch.layers.map((l: { name: string; contents: string }, i: number) => ({
+          step: i + 1,
+          name: l.name,
+          contents: l.contents,
+          background: DEFAULT_ARCH_STEPS[i]?.background,
+          color: DEFAULT_ARCH_STEPS[i]?.color,
+        }))
+      : DEFAULT_ARCH_STEPS
+
+  return (
+    <div className="bg-white p-6 sm:p-8 lg:p-10 text-slate-900 -mx-4 sm:-mx-6 lg:-mx-8">
+      <div className="space-y-6">
+        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4">
+          <div>
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-[#4F46E5]">
+              {overview.category || "01 / FOUNDATION"}
+            </p>
+            <h1 className="mt-2 text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1E1B4B]" style={SERIF}>
+              {overview.title || "Overview & Design Principles"}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-[#EEF2F6] text-[#4F46E5] text-xs font-bold rounded-full px-3 py-1">{version}</span>
+            <span className="text-xs text-[#64748B]">{overview.frame || "Frame 1 of 6"}</span>
+          </div>
+        </header>
+
+        <section className="rounded-2xl bg-[#1E1B4B] text-white p-7 sm:p-10 flex flex-col lg:flex-row justify-between items-center gap-8">
+          <div className="lg:max-w-[70%]">
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-[#93C5FD]">
+              {overview.hero?.tag || "ENTERPRISE SYSTEM"}
+            </p>
+            <h2 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight" style={SERIF}>
+              {overview.hero?.headline || `${systemName.replace(/ Design System$/, "") || "Apex"} Design System ${version}`}
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-white/80 max-w-2xl">
+              {overview.hero?.description || "A unified, scalable visual language powering our entire ecosystem. Engineered for clarity, built for accessibility, and structured to accelerate product engineering from concept to ship."}
+            </p>
+          </div>
+          <div className="w-full lg:w-auto lg:max-w-[30%] flex items-center justify-center">
+            <div className="bg-white/5 border border-white/15 rounded-xl p-8 flex items-center justify-center">
+              <Hexagon className="h-16 w-16 text-slate-200" />
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="pb-4 border-b border-slate-200">
+            <h3 className="text-lg font-bold text-[#1E1B4B]">Core Design Principles</h3>
+            <p className="mt-1 text-sm text-[#64748B]">The operational guardrails guiding our choices from tokens to complete screen patterns.</p>
+          </div>
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            {principles.map((p: { title: string; icon: string; description: string }, i: number) => {
+              const Icon = OVERVIEW_ICONS[p.icon] || Sparkles
+              return (
+                <div key={i} className="bg-white border border-[#E2E8F0] rounded-xl p-6 shadow-sm">
+                  <div className="h-10 w-10 rounded-lg bg-[#EEF2F6] text-[#4F46E5] flex items-center justify-center">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h4 className="mt-4 font-bold text-sm text-[#1E1B4B]">{p.title}</h4>
+                  <p className="mt-2 text-sm text-[#64748B] leading-relaxed">{p.description}</p>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        <section>
+          <div className="pb-4 border-b border-slate-200">
+            <h3 className="text-lg font-bold text-[#1E1B4B]">System Architecture</h3>
+            <p className="mt-1 text-sm text-[#64748B]">{arch.description || "How design ingredients combine to build comprehensive experiences."}</p>
+          </div>
+          <div className="mt-6 flex flex-col lg:flex-row items-stretch gap-2">
+            {archSteps.map((s: { step: number; name: string; contents: string; background: string; color: string }, i: number) => (
+              <div key={s.step} className="flex flex-col lg:flex-row flex-1 gap-2 items-stretch">
+                {i > 0 && (
+                  <ChevronRight className="self-center text-[#94A3B8] h-5 w-5 rotate-90 lg:rotate-0 shrink-0" />
+                )}
+                <div
+                  className="flex-1 rounded-xl p-5 border border-black/5"
+                  style={{ backgroundColor: s.background, color: s.color }}
+                >
+                  <p className="text-[11px] font-bold uppercase tracking-wider opacity-70">Step {s.step}</p>
+                  <h4 className="mt-1.5 font-bold text-sm">{s.name}</h4>
+                  <p className="mt-1.5 text-xs leading-relaxed opacity-80">{s.contents}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200">
+            <h3 className="font-bold text-base text-[#1E1B4B]">When to use the system</h3>
+            <p className="mt-2 text-sm text-[#64748B] leading-relaxed">{overview.whenToUse || arch.whenToUse || ""}</p>
+          </div>
+          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200">
+            <h3 className="font-bold text-base text-[#1E1B4B]">Exceptions &amp; Forking</h3>
+            <p className="mt-2 text-sm text-[#64748B] leading-relaxed">{overview.exceptions || arch.exceptions || ""}</p>
+          </div>
+        </section>
+
+        <footer className="flex flex-col sm:flex-row justify-between gap-2 pt-5 border-t border-slate-200 text-xs text-[#64748B]">
+          <span>{overview.footerLeft || `${systemName} — Exhaustive Reference Documentation`}</span>
+          <span>{overview.footerRight || (d.lastUpdated ? "Last Updated: " + d.lastUpdated.replace(/^Generated\s+/, "") : "")}</span>
+        </footer>
+      </div>
+    </div>
+  )
+}
+
+const NEUTRAL_ORDER = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"]
+
+interface PrimarySwatch { name: string; hex: string; rgb?: string; hsl?: string; description?: string }
+interface HighlightSwatch { name: string; hex: string }
+interface NeutralBlock { weight: string; hex: string }
+interface SemanticRow { name: string; label: string; tint: string; base: string; dark: string }
+interface ContrastRow { sample: string; ratio: string }
+
+function ColorSystemSection({ d }: { d: DesignData }) {
+  const doc = d.colorSystemDoc || {}
+  const colors = d.tokens?.colors || {}
+  const cs = d.colorSystem || {}
+
+  const primaryBrand: PrimarySwatch[] = doc.primaryBrand?.length
+    ? doc.primaryBrand
+    : [
+        { name: "Indigo Primary", hex: colors.primary || "#4F46E5", description: "Interactive primary action buttons, active navigation" },
+        { name: "Blue Brand", hex: colors.secondary || "#2563EB", description: "Informational states, highlights, interactive accents" },
+        { name: "Violet Accent", hex: colors.accent || "#7C3AED", description: "Promo paths, secondary premium features, specialized states" },
+      ]
+
+  const secondaryHighlights: HighlightSwatch[] = doc.secondaryHighlights?.length
+    ? doc.secondaryHighlights
+    : [
+        { name: "Teal 600", hex: colors.semantic?.info || "#0D9488" },
+        { name: "Emerald 600", hex: colors.semantic?.success || "#059669" },
+        { name: "Amber 600", hex: colors.semantic?.warning || "#D97706" },
+        { name: "Rose 600", hex: colors.semantic?.error || "#E11D48" },
+      ]
+
+  const neutral: NeutralBlock[] = doc.neutral?.length
+    ? doc.neutral
+    : NEUTRAL_ORDER.map((w) => ({ weight: w, hex: colors.neutral?.[w] })).filter((n) => n.hex)
+
+  const semanticColors: SemanticRow[] = doc.semanticColors?.length
+    ? doc.semanticColors
+    : [
+        { name: "Success State", label: "Positive actions / successful operations", tint: colors.semantic?.successBg || "#DCFCE7", base: colors.semantic?.success || "#10B981", dark: "#064E3B" },
+        { name: "Warning State", label: "Requires user caution", tint: colors.semantic?.warningBg || "#FEF3C7", base: colors.semantic?.warning || "#F59E0B", dark: "#78350F" },
+        { name: "Error State", label: "Destructive choices / errors", tint: colors.semantic?.errorBg || "#FEE2E2", base: colors.semantic?.error || "#EF4444", dark: "#7F1D1D" },
+        { name: "Info State", label: "Neutral advice & hints", tint: colors.semantic?.infoBg || "#DBEAFE", base: colors.semantic?.info || "#3B82F6", dark: "#1E3A8A" },
+      ]
+
+  const lightReport: ContrastRow[] = doc.accessibility?.light?.length ? doc.accessibility.light : cs.lightSurfaceReport || []
+  const darkReport: ContrastRow[] = doc.accessibility?.dark?.length ? doc.accessibility.dark : cs.darkSurfaceReport || []
+  const darkSurfaceHex = neutral.find((n) => n.weight === "800")?.hex || "#1E293B"
+  const guidelines = doc.guidelines || {
+    do: cs.do?.[0] || "Ensure warning highlights utilize designated yellow/amber variables stacked with warning-dark text colors to maintain WCAG compliant readability patterns.",
+    dont: cs.dont?.[3] || "Do not route primary branding color to denote critical warnings or missing inputs, which confuses global state categorization guidelines.",
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-primary font-semibold uppercase tracking-[0.2em]">{doc.category || "02 / FOUNDATION"}</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold" style={SERIF}>{doc.title || "Color System"}</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="bg-primary/10 text-primary rounded-full text-xs font-bold">{doc.version || d.version || "v2.0.0"}</Badge>
+          <span className="text-xs text-muted-foreground">{doc.frame || "Frame 2 of 6"}</span>
+        </div>
+      </div>
+      <Separator />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold text-base">Primary Brand Colors</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Primary calls to action, focus outlines, and active state highlights.</p>
+          <div className="mt-4 space-y-3">
+            {primaryBrand.map((sw, i) => (
+              <div key={i} className="flex items-center gap-4 p-4 rounded-xl border bg-card">
+                <div className="h-12 w-12 rounded-lg border shrink-0" style={{ backgroundColor: sw.hex }} />
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm">{sw.name}</p>
+                  <p className="text-xs font-mono text-muted-foreground truncate">
+                    {sw.hex}{sw.rgb ? <> · RGB {sw.rgb} · HSL {sw.hsl}</> : null}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{sw.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-base">Secondary Highlights</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Data categories, visual tag markers, and secondary interactive states.</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {secondaryHighlights.map((h, i) => (
+              <div key={i} className="rounded-xl border bg-card p-3">
+                <div className="h-16 rounded-lg border" style={{ backgroundColor: h.hex }} />
+                <p className="mt-2 text-xs font-semibold">{h.name}</p>
+                <p className="text-[11px] font-mono text-muted-foreground uppercase">{h.hex}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold text-base">Neutral Palette</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Standard interface surfaces, card borders, text headings, and quiet backgrounds.</p>
+        <div className="mt-4 grid grid-cols-6 sm:grid-cols-11 gap-2">
+          {neutral.map((n, i) => (
+            <div key={i} className="space-y-1.5 text-center">
+              <div className="h-16 rounded-lg border" style={{ backgroundColor: n.hex }} />
+              <p className="text-xs font-bold">{n.weight}</p>
+              <p className="text-[10px] font-mono text-muted-foreground uppercase truncate">{n.hex}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold text-base">Semantic Colors</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Pre-allocated tracks driving state indicators and feedback alerts.</p>
+          <div className="mt-4 space-y-3">
+            {semanticColors.map((sem, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-card">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{sem.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{sem.label}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="h-9 w-9 rounded-md border" style={{ backgroundColor: sem.tint }} title={sem.tint} />
+                  <div className="h-9 w-9 rounded-md border" style={{ backgroundColor: sem.base }} title={sem.base} />
+                  <div className="h-9 w-9 rounded-md border" style={{ backgroundColor: sem.dark }} title={sem.dark} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-base">Color Accessibility</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Valid contrast ratios tested against WCAG standard rules.</p>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { title: "On Light Surface", hex: "#FFFFFF", text: "#0F172A", report: lightReport },
+              { title: "On Dark Surface", hex: darkSurfaceHex, text: "#F8FAFC", report: darkReport },
+            ].map((surface, si) => (
+              <div key={si} className="rounded-xl border p-4" style={{ backgroundColor: surface.hex }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="h-4 w-4 rounded border border-black/10" style={{ backgroundColor: surface.hex }} />
+                  <p className="text-sm font-bold" style={{ color: surface.text }}>{surface.title}</p>
+                </div>
+                <div className="space-y-2.5">
+                  {surface.report.map((r, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3">
+                      <span className="text-sm" style={{ color: surface.text }}>{r.sample}</span>
+                      <span
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                          String(r.ratio).includes("Fail")
+                            ? "bg-red-100 text-red-700 border-red-200"
+                            : String(r.ratio).includes("AAA")
+                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                              : "bg-green-100 text-green-700 border-green-200"
+                        }`}
+                      >
+                        {r.ratio}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold text-base">Color Usage Guidelines</h3>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-xl bg-emerald-50/60 border-l-4 border-emerald-500 p-4 dark:bg-emerald-950/40 dark:border-emerald-400">
+            <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300 mb-1.5">DO</p>
+            <p className="text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed">{guidelines.do}</p>
+          </div>
+          <div className="rounded-xl bg-red-50/60 border-l-4 border-red-500 p-4 dark:bg-red-950/40 dark:border-red-400">
+            <p className="text-sm font-bold text-red-800 dark:text-red-300 mb-1.5">DON&apos;T</p>
+            <p className="text-sm text-red-900 dark:text-red-200 leading-relaxed">{guidelines.dont}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface TypeScaleRow { style: string; size: string; lineHeight: string; weight: string | number; font?: string; serif?: boolean; uppercase?: boolean; letterSpacing?: string; preview: string }
+interface FontFamilyCard { name: string; role: string; sample: string; font: string }
+interface FontWeightRow { name: string; value: number }
+interface SpacingCard { label: string; value: string; lineHeight?: string; letterSpacing?: string; uppercase?: boolean; description: string }
+
+const DEFAULT_TYPE_SCALE: TypeScaleRow[] = [
+  { style: "Display XL", size: "72px", lineHeight: "80px", weight: "700", serif: true, preview: "Apex Visuals" },
+  { style: "Header H1", size: "48px", lineHeight: "56px", weight: "700", serif: true, preview: "System Hierarchy Overview" },
+  { style: "Header H2", size: "36px", lineHeight: "44px", weight: "600", preview: "Medium scale sub-headings" },
+  { style: "Header H3", size: "30px", lineHeight: "38px", weight: "600", preview: "Section container block title" },
+  { style: "Header H4", size: "24px", lineHeight: "32px", weight: "500", preview: "Card grouping visual labels" },
+  { style: "Header H5", size: "20px", lineHeight: "28px", weight: "500", preview: "Compact card labels and list groups" },
+  { style: "Body Large", size: "18px", lineHeight: "26px", weight: "400", preview: "Intro paragraphs and lead-in sentence text styles." },
+  { style: "Body Regular", size: "16px", lineHeight: "24px", weight: "400", preview: "Default interactive dashboard table copy, standard paragraphs, and control properties." },
+  { style: "Body Small", size: "14px", lineHeight: "20px", weight: "400", preview: "Sub-information text, forms metadata, input hints, and table cell annotations." },
+  { style: "Caption", size: "12px", lineHeight: "16px", weight: "500", uppercase: true, preview: "CHART AXIS LABEL, HELPER LEGENDS, MINI METADATA STATS." },
+  { style: "Overline", size: "10px", lineHeight: "14px", weight: "600", uppercase: true, letterSpacing: "0.08em", preview: "PRE-ACCENT CATEGORY TAG MARKER" },
+]
+
+const DEFAULT_FONT_WEIGHTS: FontWeightRow[] = [
+  { name: "Thin", value: 100 }, { name: "Light", value: 300 }, { name: "Regular", value: 400 },
+  { name: "Medium", value: 500 }, { name: "SemiBold", value: 600 }, { name: "Bold", value: 700 }, { name: "ExtraBold", value: 800 },
+]
+
+const DEFAULT_LINE_HEIGHT: { tight: SpacingCard; normal: SpacingCard } = {
+  tight: { label: "TIGHT", value: "115% / 1.15", lineHeight: "1.15", description: "This block shows tight spacing configuration. Good only for short displays or condensed alert tags needing minimum height." },
+  normal: { label: "NORMAL", value: "150% / 1.5", lineHeight: "1.5", description: "Standard reading tracking scale used throughout regular document bodies, text blocks, descriptions, and user feedback prompts." },
+}
+
+const DEFAULT_LETTER_SPACING: { compact: SpacingCard; wide: SpacingCard } = {
+  compact: { label: "COMPACT", value: "-2% / -0.32px", letterSpacing: "-0.32px", description: "Displays headers utilize tight visual tracking." },
+  wide: { label: "WIDE", value: "+10% / 1.2px", letterSpacing: "1.2px", uppercase: true, description: "Overlines and badge titles need wider spacing." },
+}
+
+function TypographySection({ d }: { d: DesignData }) {
+  const doc = d.typographyDoc || {}
+  const tokens = d.tokens?.typography || {}
+  const headingFont = tokens.headingFont || "'Playfair Display', Georgia, serif"
+  const fontFamily = tokens.fontFamily || "Inter, sans-serif"
+
+  const typeScale: TypeScaleRow[] = doc.typeScale?.length ? doc.typeScale : DEFAULT_TYPE_SCALE
+  const fontFamilies: FontFamilyCard[] = doc.fontFamilies?.length
+    ? doc.fontFamilies
+    : [
+        { name: "Inter (Sans-Serif)", role: "Primary / Interface Engine", sample: "AbCdEfGhIjKlMnOpQrStUvWxYz 1234567890", font: fontFamily },
+        { name: "Playfair Display (Serif)", role: "Secondary / Editorial & display", sample: "AbCdEfGhIjKlMnOpQrStUvWxYz 1234567890", font: headingFont },
+        { name: "JetBrains Mono (Monospace)", role: "System / Code & analytical metrics", sample: "const token_id = '#4F46E5';", font: tokens.monoFont || "'JetBrains Mono', monospace" },
+      ]
+  const fontWeights: FontWeightRow[] = doc.fontWeights?.length ? doc.fontWeights : DEFAULT_FONT_WEIGHTS
+  const lineHeight = doc.lineHeight || DEFAULT_LINE_HEIGHT
+  const letterSpacing = doc.letterSpacing || DEFAULT_LETTER_SPACING
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-primary font-semibold uppercase tracking-[0.2em]">{doc.category || "03 / FOUNDATION"}</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold" style={SERIF}>{doc.title || "Typography & Type Scale"}</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="bg-primary/10 text-primary rounded-full text-xs font-bold">{doc.version || d.version || "v2.0.0"}</Badge>
+          <span className="text-xs text-muted-foreground">{doc.frame || "Frame 3 of 6"}</span>
+        </div>
+      </div>
+      <Separator />
+
+      <div>
+        <h3 className="font-bold text-base">System Type Scale</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Structured typography scale optimized for reading pacing and application interface density.</p>
+        <div className="mt-4 rounded-xl border divide-y">
+          {typeScale.map((t, i) => (
+            <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5">
+              <div className="sm:w-60 shrink-0">
+                <p className="font-semibold text-sm">{t.style}</p>
+                <p className="text-[11px] font-mono text-muted-foreground mt-0.5">{t.size} / {t.lineHeight} / {t.weight}</p>
+              </div>
+              <p
+                className="sm:text-right min-w-0"
+                style={{
+                  fontFamily: t.font || (t.serif ? headingFont : fontFamily),
+                  fontSize: t.size,
+                  lineHeight: t.lineHeight,
+                  fontWeight: t.weight,
+                  letterSpacing: t.letterSpacing || "0",
+                  textTransform: t.uppercase ? "uppercase" : undefined,
+                }}
+              >
+                {t.preview}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold text-base">Font Families</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">The system deploys three families mapped specifically to usage context.</p>
+          <div className="mt-4 space-y-3">
+            {fontFamilies.map((f, i) => (
+              <div key={i} className="rounded-xl border bg-card p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-sm">{f.name}</p>
+                  <span className="text-[11px] text-primary font-medium shrink-0">{f.role}</span>
+                </div>
+                <p className="mt-3 truncate" style={{ fontFamily: f.font }}>{f.sample}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-base">Font Weights</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Weight variants driving reading hierarchy within components.</p>
+          <div className="mt-4 rounded-xl border bg-card p-2 divide-y">
+            {fontWeights.map((w, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <span className="text-xs text-muted-foreground font-mono w-24 shrink-0">{w.value} · {w.name}</span>
+                <span className="text-base truncate" style={{ fontWeight: w.value }}>Typography Structure</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold text-base">Line Height &amp; Letter Spacing</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Correct spacing is vital to eliminate reading fatigue in long blocks.</p>
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm">{lineHeight.tight.label}</p>
+                <span className="text-[11px] font-mono text-muted-foreground">{lineHeight.tight.value}</span>
+              </div>
+              <p className="mt-3 text-sm" style={{ lineHeight: lineHeight.tight.lineHeight }}>{lineHeight.tight.description}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm">{lineHeight.normal.label}</p>
+                <span className="text-[11px] font-mono text-muted-foreground">{lineHeight.normal.value}</span>
+              </div>
+              <p className="mt-3 text-sm" style={{ lineHeight: lineHeight.normal.lineHeight }}>{lineHeight.normal.description}</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm">{letterSpacing.compact.label}</p>
+                <span className="text-[11px] font-mono text-muted-foreground">{letterSpacing.compact.value}</span>
+              </div>
+              <p className="mt-3 text-sm" style={{ letterSpacing: letterSpacing.compact.letterSpacing }}>{letterSpacing.compact.description}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm">{letterSpacing.wide.label}</p>
+                <span className="text-[11px] font-mono text-muted-foreground">{letterSpacing.wide.value}</span>
+              </div>
+              <p
+                className="mt-3 text-xs font-bold uppercase"
+                style={{ letterSpacing: letterSpacing.wide.letterSpacing, color: "#4F46E5", lineHeight: "1.5" }}
+              >
+                {letterSpacing.wide.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SpacingSection({ d }: { d: DesignData }) {
+  const spacingScale: number[] = d.spacingLayout?.spacingScale || d.tokens?.spacing?.scale || []
+  const spacingNames: string[] = d.spacingLayout?.spacingNames || d.tokens?.spacing?.names || []
+  const baseUnit = d.spacingLayout?.baseUnit || d.tokens?.spacing?.baseUnit || 4
+  const radiusScale: Record<string, string> = d.tokens?.radiusScale || d.spacingLayout?.radiusScale || {}
+  const avatar = d.tokens?.sizing?.avatar || {}
+  const inputHeights = d.tokens?.sizing?.inputHeights || {}
+  const button = d.tokens?.sizing?.button || {}
+  const card = d.tokens?.sizing?.card || {}
+
+  const spacingRows = spacingScale.slice(1).map((v: number, i: number) => ({
+    token: spacingNames[i + 1] || `Space ${i + 1}`,
+    value: v,
+  }))
+
+  const RADIUS_ORDER = [
+    { key: "none", desc: "sharp corners" },
+    { key: "sm", desc: "slightly rounded corners" },
+    { key: "md", desc: "standard rounding" },
+    { key: "lg", desc: "card/input rounding" },
+    { key: "xl", desc: "dashboard card rounding" },
+    { key: "2xl", desc: "large banner/container rounding" },
+    { key: "full", desc: "capsule/pill rounding" },
+  ]
+
+  const avatarRamp = [
+    { label: "24px", value: avatar.xxs },
+    { label: "32px", value: avatar.xs },
+    { label: "40px", value: avatar.sm },
+    { label: "48px", value: avatar.md },
+    { label: "64px", value: avatar.lg },
+  ]
+
+  const inputRows = [
+    { label: "Small", token: "sm", value: inputHeights.sm },
+    { label: "Default", token: "md", value: inputHeights.default },
+    { label: "Large", token: "lg", value: inputHeights.lg },
+  ]
+
+  const buttonSpecs = [
+    { label: "Horizontal padding", value: button.horizontalPadding, token: "Space 5" },
+    { label: "Vertical padding", value: button.verticalPadding, token: "Space 3" },
+    { label: "Inner Spacing", value: button.innerSpacing, token: "Space 2" },
+  ]
+
+  const cardSpecs = [
+    { label: "Uniform Padding", value: card.padding, token: "Space 6" },
+    { label: "Header to content gap", value: card.headerGap, token: "Space 3" },
+    { label: "Card corner radius", value: card.radius, token: "Radius xl" },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-primary font-semibold uppercase tracking-[0.2em]">04 / FOUNDATION</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold" style={SERIF}>Spacing &amp; Sizing Scales</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="bg-primary/10 text-primary rounded-full text-xs font-bold">{d.version || "v2.0.0"}</Badge>
+          <span className="text-xs text-muted-foreground">Frame 4 of 6</span>
+        </div>
+      </div>
+      <Separator />
+
+      <div>
+        <h3 className="font-bold text-base">Visual Spacing Scale</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Base {baseUnit}px sizing units governing components gaps, paddings, margins.</p>
+        <div className="mt-4 rounded-xl border bg-card p-5 space-y-3">
+          {spacingRows.map((r) => (
+            <div key={r.token} className="flex items-center gap-4">
+              <div className="w-28 shrink-0">
+                <p className="font-semibold text-sm">{r.token}</p>
+                <p className="text-xs font-mono text-muted-foreground">{r.value}px</p>
+              </div>
+              <div className="h-3.5 rounded-sm bg-primary" style={{ width: `${r.value}px` }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold text-base">Standard Sizing Tokens</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Assigned target measurements for layout elements and interface nodes.</p>
+          <div className="mt-4 rounded-xl border bg-card p-5 space-y-6">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Avatar Sizing Ramp</p>
+              <div className="flex items-end gap-4">
+                {avatarRamp.map((a) => (
+                  <div key={a.label} className="flex flex-col items-center gap-2">
+                    <div
+                      className="rounded-full border border-primary/30 bg-primary/10"
+                      style={{ width: a.value, height: a.value }}
+                    />
+                    <span className="text-xs font-mono text-muted-foreground">{a.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Form Inputs Heights</p>
+              <div className="space-y-2">
+                {inputRows.map((row) => (
+                  <div
+                    key={row.token}
+                    className="flex items-center justify-between rounded-md border px-3"
+                    style={{ height: row.value }}
+                  >
+                    <span className="text-sm font-medium">{row.label}</span>
+                    <span className="text-xs text-muted-foreground">{row.token}: {row.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-base">Border Radius Scale</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Corner styling rules shaping surfaces geometry.</p>
+          <div className="mt-4 rounded-xl border bg-card p-5 space-y-3">
+            {RADIUS_ORDER.map((rad) => {
+              const val = radiusScale[rad.key] || "0px"
+              return (
+                <div key={rad.key} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold font-mono">{rad.key} ({val})</p>
+                    <p className="text-xs text-muted-foreground">{rad.desc}</p>
+                  </div>
+                  <div
+                    className="h-6 w-20 rounded-md border border-primary/40 bg-primary/10 shrink-0"
+                    style={{ borderRadius: val }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold text-base">Padding &amp; Layout Scaffolding Rules</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Standard spacing applications on regular component patterns.</p>
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="rounded-xl border bg-card p-5">
+            <button className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-medium text-primary-foreground">
+              + Action CTA
+            </button>
+            <ul className="mt-4 space-y-3">
+              {buttonSpecs.map((s) => (
+                <li key={s.label} className="flex items-center justify-between gap-3 text-sm border-t pt-3">
+                  <span>{s.label}</span>
+                  <span className="text-muted-foreground">{s.value} ({s.token})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-xl border bg-card p-5">
+            <div className="rounded-xl border bg-muted p-4">
+              <p className="font-bold text-sm">Card Title Header</p>
+              <p className="text-xs text-muted-foreground mt-1">Full body contents and details tracking. Inside margins ensure alignment.</p>
+            </div>
+            <ul className="mt-4 space-y-3">
+              {cardSpecs.map((s) => (
+                <li key={s.label} className="flex items-center justify-between gap-3 text-sm border-t pt-3">
+                  <span>{s.label}</span>
+                  <span className="text-muted-foreground">{s.value} ({s.token})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function GridSection({ d }: { d: DesignData }) {
+  const grid = d.tokens?.grid || {}
+  const containers = grid.maxWidthContainers || {}
+  const breakpointData = grid.breakpoints || d.spacingLayout?.breakpoints || {}
+
+  const breakpointOrder = ["xs", "sm", "md", "lg", "xl", "2xl"]
+  const breakpointLabels: Record<string, string> = {
+    xs: "Mobile Portrait",
+    sm: "Mobile Landscape",
+    md: "Tablet Portrait",
+    lg: "Tablet Landscape / Laptop",
+    xl: "Desktop standard",
+    "2xl": "Large Desktop screens",
+  }
+
+  const breakpoints = breakpointOrder.map((key) => ({
+    key,
+    label: breakpointLabels[key] || key,
+    min: key === "xs" ? 0 : parseInt(String(breakpointData[key] || "0"), 10),
+  }))
+
+  const breakpointRows = breakpoints.map((bp, i) => {
+    const next = breakpoints[i + 1]
+    const range = next ? `${bp.min}px - ${next.min - 1}px` : `${bp.min}px +`
+    return { ...bp, range }
+  })
+
+  const containerOrder = ["640px", "768px", "1024px", "1280px", "1536px"]
+  const containerClass: Record<string, string> = {
+    "640px": "Max-sm", "768px": "Max-md", "1024px": "Max-lg", "1280px": "Max-xl", "1536px": "Max-2xl",
+  }
+  const containerRows = containerOrder.map((key) => ({
+    className: containerClass[key] || `Max-${key}`,
+    width: key,
+    usage: containers[key]?.usage || "",
+  }))
+
+  const patterns = [
+    { name: "Single Column", layout: [{ grow: 1 }] },
+    { name: "Sidebar + Main", layout: [{ width: "25%" }, { grow: 1 }] },
+    { name: "2-Column Equal", layout: [{ grow: 1 }, { grow: 1 }] },
+    { name: "3-Column Dash", layout: [{ width: "20%" }, { grow: 1 }, { width: "20%" }] },
+  ]
+
+  const systemLabel = containers.fluid?.usage || "System: Fluid Center"
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-primary font-semibold uppercase tracking-[0.2em]">05 / FOUNDATION</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold" style={SERIF}>Grid &amp; Responsive Layout</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="bg-primary/10 text-primary rounded-full text-xs font-bold">{d.version || "v2.0.0"}</Badge>
+          <span className="text-xs text-muted-foreground">Frame 5 of 6</span>
+        </div>
+      </div>
+      <Separator />
+
+      <div>
+        <h3 className="font-bold text-base">12-Column Grid System Structure</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Dynamic page grid configurations matching layout constraints.</p>
+        <div className="mt-4 rounded-xl border bg-card p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Desktop (1440px) Grid representation</p>
+          <div className="flex gap-2">
+            {Array.from({ length: grid.columns || 12 }).map((_, i) => (
+              <div key={i} className="h-12 flex-1 rounded-md border border-primary/25 bg-primary/10" />
+            ))}
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-4 border-t pt-4">
+            <div>
+              <p className="text-xs font-semibold">Margins</p>
+              <p className="text-sm text-muted-foreground font-mono">{grid.margins?.desktop || "80px"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold">Gutter width</p>
+              <p className="text-sm text-muted-foreground font-mono">{grid.gutter || "24px"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold">System</p>
+              <p className="text-sm text-muted-foreground font-mono">{systemLabel}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold text-base">Breakpoint Grid Rules</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">The standard breakpoints scale powering device adaptations.</p>
+          <div className="mt-4 rounded-xl border bg-card p-5 space-y-3">
+            {breakpointRows.map((b) => (
+              <div key={b.key} className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Badge variant="secondary" className="text-[10px] font-mono uppercase">{b.key}</Badge>
+                  <span className="text-sm">{b.label}</span>
+                </div>
+                <span className="text-sm text-muted-foreground font-mono text-right">{b.range}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-base">Max-Width Containers</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Page limits avoiding endless line lengths.</p>
+          <div className="mt-4 rounded-xl border bg-card p-5 space-y-3">
+            {containerRows.map((c) => (
+              <div key={c.className} className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold font-mono text-primary">{c.className}: <span className="text-primary">{c.width}</span></span>
+                <span className="text-sm text-muted-foreground text-right">{c.usage}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold text-base">Canonical Layout Patterns</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Standard layouts models structured inside columns.</p>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {patterns.map((p) => (
+            <div key={p.name} className="rounded-xl border bg-card p-4">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{p.name}</p>
+              <div className="flex gap-2 h-8">
+                {p.layout.map((col, i) => (
+                  <div
+                    key={i}
+                    className="h-8 rounded-md bg-muted"
+                    style={col.grow ? { flexGrow: col.grow } : { width: col.width as string }}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SOLID_PATHS: Record<string, { d: string; fillRule?: "evenodd" }> = {
+  home: {
+    d: "M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8z",
+    fillRule: "evenodd",
+  },
+  search: {
+    d: "M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 15.5 9.5 6.5 6.5 0 1 0 9 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0A4.5 4.5 0 1 1 9.5 5 4.5 4.5 0 0 1 9.55 14H9.5Z",
+    fillRule: "evenodd",
+  },
+  settings: {
+    d: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96a9.28 9.28 0 0 0-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58a9.28 9.28 0 0 0 0 1.88l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Zm0-2.2a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8Z",
+    fillRule: "evenodd",
+  },
+  profile: {
+    d: "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z",
+  },
+  notification: {
+    d: "M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z",
+  },
+  favorite: {
+    d: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35Z",
+  },
+  ratings: {
+    d: "M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21Z",
+  },
+  "arrow up": {
+    d: "M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8Z",
+  },
+  checkmark: {
+    d: "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z",
+  },
+  close: {
+    d: "M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2Zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59Z",
+    fillRule: "evenodd",
+  },
+  navigation: {
+    d: "M3 18h18v-2H3v2Zm0-5h18v-2H3v2Zm0-7v2h18V6H3Z",
+  },
+  "create new": {
+    d: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z",
+  },
+}
+
+const ICON_ENTRIES: { label: string; outline: LucideIcon; solid: string }[] = [
+  { label: "Home", outline: Home, solid: "home" },
+  { label: "Search", outline: Search, solid: "search" },
+  { label: "Settings", outline: Settings, solid: "settings" },
+  { label: "Profile", outline: User, solid: "profile" },
+  { label: "Notification", outline: Bell, solid: "notification" },
+  { label: "Favorite", outline: Heart, solid: "favorite" },
+  { label: "Ratings", outline: Star, solid: "ratings" },
+  { label: "Arrow Up", outline: ArrowUp, solid: "arrow up" },
+  { label: "Checkmark", outline: Check, solid: "checkmark" },
+  { label: "Close", outline: CloseIcon, solid: "close" },
+  { label: "Navigation", outline: Menu, solid: "navigation" },
+  { label: "Create New", outline: Plus, solid: "create new" },
+]
+
+function SolidIcon({ name, className }: { name: string; className?: string }) {
+  const icon = SOLID_PATHS[name]
+  if (!icon) return null
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      fillRule={icon.fillRule || "nonzero"}
+      aria-hidden="true"
+    >
+      <path d={icon.d} />
+    </svg>
+  )
+}
+
+const SIZING_TARGETS = [
+  { size: 16, square: 32 },
+  { size: 20, square: 36 },
+  { size: 24, square: 40 },
+  { size: 32, square: 48 },
+  { size: 40, square: 56 },
+  { size: 48, square: 64 },
+]
+
+const SEMANTIC_COLORS = [
+  { color: "#4F46E5", label: "Primary Icon Action", purpose: "Interactive links" },
+  { color: "#475569", label: "Secondary Normal icon", purpose: "Standard status indicators" },
+  { color: "#94A3B8", label: "Disabled/Quiet Icon state", purpose: "Unavailable choices" },
+  { color: "#EF4444", label: "Destructive alert feedback", purpose: "Caution alert tags" },
+]
+
+function IconographySection({ d }: { d: DesignData }) {
+  const icon = d.tokens?.iconography || {}
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-[#4F46E5] font-semibold uppercase tracking-[0.2em]">06 / FOUNDATION</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-[#1E1B4B]" style={SERIF}>Iconography System Standards</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="bg-[#EEF2F6] text-[#4F46E5] rounded-full text-xs font-bold">{icon.version || d.version || "v2.0.0"}</Badge>
+          <span className="text-xs text-muted-foreground">Frame 6 of 6</span>
+        </div>
+      </div>
+      <Separator />
+
+      <div>
+        <h3 className="font-bold text-base">Core Interface Icon Sets</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Primary controls and navigation markers shown in both outlines and filled treatments.</p>
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {ICON_ENTRIES.map(({ label, outline: Outline, solid }) => (
+            <div key={label} className="border border-[#E2E8F0] rounded-lg bg-white p-4 text-center">
+              <div className="flex items-center justify-center gap-3">
+                <Outline className="h-6 w-6 text-slate-700" strokeWidth={2} />
+                <SolidIcon name={solid} className="h-6 w-6 text-slate-700" />
+              </div>
+              <p className="mt-3 text-xs font-medium text-slate-600">{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold text-base">Icon Sizing Targets</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Consistent scaling options preventing icon bloat.</p>
+          <div className="mt-4 rounded-xl border bg-card p-5">
+            <div className="flex flex-wrap items-end justify-center gap-4">
+              {SIZING_TARGETS.map((t) => (
+                <div key={t.size} className="flex flex-col items-center gap-2">
+                  <div
+                    className="inline-flex items-center justify-center rounded-md border border-[#E2E8F0] bg-[#EEF2F6]"
+                    style={{ width: t.square, height: t.square }}
+                  >
+                    <Settings className="text-slate-700" style={{ width: t.size, height: t.size }} strokeWidth={1.5} />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700">{t.size}px</span>
+                  <span className="text-[10px] text-muted-foreground">Box {t.square}px</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-base">Semantic Color treatments</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Icon color allocations driving interactive statuses.</p>
+          <div className="mt-4 rounded-xl border bg-card p-2 divide-y">
+            {SEMANTIC_COLORS.map((s) => (
+              <div key={s.label} className="flex items-center justify-between gap-3 px-3 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Settings className="h-5 w-5 shrink-0" style={{ color: s.color }} strokeWidth={1.5} />
+                  <span className="text-sm font-medium">{s.label}</span>
+                </div>
+                <span className="text-xs text-muted-foreground text-right">{s.purpose}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-bold text-base">Icon Grid &amp; Keylines</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Constructive geometry grid ensuring visual weight matches.</p>
+          <div className="mt-4 rounded-xl border bg-card p-5 flex items-center gap-5">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-dashed border-[#CBD5E1] bg-[#F8FAFC]">
+              <svg className="absolute inset-0 h-full w-full text-[#3B82F6]" aria-hidden="true">
+                <defs>
+                  <pattern id="keyline-grid" width="8" height="8" patternUnits="userSpaceOnUse">
+                    <circle cx="1" cy="1" r="0.8" fill="currentColor" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#keyline-grid)" />
+              </svg>
+              <div className="absolute h-10 w-10 rounded-full border border-dashed border-[#3B82F6]" />
+              <Check className="relative h-6 w-6 text-[#3B82F6]" strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm">24px Base Keyline System</p>
+              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                Create all system graphics inside a 24×24px workspace container featuring a surrounding 2px safe-zone margin. Respect internal keylines bounding box standards for round or sharp indicators.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="font-bold text-base">Interactive Touch targets</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Ensuring proper dimensions matching compliance guidelines.</p>
+          <div className="mt-4 rounded-xl border bg-card p-5 flex items-center gap-5">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-solid border-[#C7D2FE] bg-[#EEF2F6]">
+              <div className="absolute h-5 w-5 rounded-sm border border-dashed border-[#3B82F6] flex items-center justify-center">
+                <CloseIcon className="h-3 w-3 text-[#4F46E5]" strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm">Min Touch Target: 44×44px</p>
+              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                Even if the graphic footprint remains compact (e.g., a 20px close element), assure the interactive bounding-box container respects the minimum 44px bounds requested by WCAG.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const ELEVATION_LEVELS = [
+  { level: "LEVEL 0", usage: "Flat layout panels. Flat forms.", shadow: "none" },
+  { level: "LEVEL 1", usage: "Basic information cards.", shadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)" },
+  { level: "LEVEL 2", usage: "Dropdown lists, navigation flyouts.", shadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)" },
+  { level: "LEVEL 3", usage: "Modal dialog frames, system alerts.", shadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" },
+]
+
+const BORDER_STYLES = [
+  { label: "Solid 1px", className: "border border-[#CBD5E1]" },
+  { label: "Solid 2px", className: "border-2 border-[#334155]" },
+  { label: "Dashed Border", className: "border-2 border-dashed border-[#94A3B8]" },
+  { label: "Dotted Border", className: "border-2 border-dotted border-[#94A3B8]" },
+]
+
+const SURFACE_LAYERS = [
+  { name: "Canvas Page", tag: "#F8FAFC", className: "ring-1 ring-[#E2E8F0]", shadow: "none" },
+  { name: "Surface Card", tag: "Level 1", className: "ring-1 ring-[#E2E8F0]", shadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)" },
+  { name: "Overlay State", tag: "Level 3", className: "border-2 border-[#2563EB]", shadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" },
+]
+
+function ElevationSection({ d }: { d: DesignData }) {
+  const elev = d.tokens?.elevation || {}
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-[#4F46E5] font-semibold uppercase tracking-[0.2em]">07 / FOUNDATION</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-[#1E1B4B]" style={SERIF}>Elevation &amp; Surfaces</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="secondary" className="bg-[#EEF2F6] text-[#4F46E5] rounded-full text-xs font-bold">{d.version || "v2.0.0"}</Badge>
+          <span className="text-xs text-muted-foreground">Frame 7 of 7</span>
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground -mt-3">Guidelines for conveying physical depth using systematic border rendering, layered backgrounds, and drop shadows.</p>
+      <Separator />
+
+      <div>
+        <h3 className="font-bold text-base">Elevation Scale</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Visual separation is governed by progressively heavier soft shadows.</p>
+        <div className="mt-4 rounded-xl bg-[#F1F5F9] p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {ELEVATION_LEVELS.map((lv) => (
+              <div key={lv.level} className="flex flex-1 flex-col gap-2 rounded-lg border border-[#E2E8F0] bg-white p-6" style={{ boxShadow: lv.shadow }}>
+                <p className="text-xs font-bold text-slate-800">{lv.level}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{lv.usage}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div>
+            <h3 className="font-bold text-base">Border Styles</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Solid and pattern constraints.</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {BORDER_STYLES.map((b) => (
+                <div key={b.label} className={`flex items-center justify-center rounded-lg p-4 text-sm font-medium text-slate-700 ${b.className}`}>
+                  {b.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-base">Dividers</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Separation layouts.</p>
+            <div className="mt-4 rounded-xl border bg-white p-6 space-y-6">
+              <div className="h-px w-full bg-[#E2E8F0]" />
+              <div className="mx-auto h-px w-24 bg-[#E2E8F0]" />
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">OR CONTINUE WITH</span>
+                <div className="h-px flex-1 bg-[#E2E8F0]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <h3 className="font-bold text-base">Focus Rings</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Aesthetics of active keyboard interaction.</p>
+            <div className="mt-4 rounded-xl border bg-white p-6 flex flex-col sm:flex-row items-center gap-5">
+              <div className="rounded-md p-1">
+                <button className="rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white" style={{ outline: "3px solid #93C5FD", outlineOffset: "2px" }}>
+                  Primary Action
+                </button>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">Highlighted by 3px outer stroke with 1px internal spacer.</p>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-base">Surface Hierarchy</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Z-index abstraction model.</p>
+            <div className="mt-4 relative flex h-40 items-center justify-center rounded-xl bg-[#F1F5F9] p-8">
+              {SURFACE_LAYERS.map((s, i) => (
+                <div
+                  key={s.name}
+                  className={`absolute flex w-64 items-center justify-between gap-3 rounded-lg bg-white px-5 py-4 ${s.className}`}
+                  style={{
+                    boxShadow: s.shadow,
+                    zIndex: i,
+                    transform: i === 0 ? "translateX(-28px) translateY(14px)" : i === 1 ? "translateX(0) translateY(6px)" : "translateX(28px)",
+                  }}
+                >
+                  <p className="text-sm font-semibold text-slate-800">{s.name}</p>
+                  <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${i === 2 ? "text-[#2563EB]" : "text-muted-foreground"} bg-slate-100`}>
+                    {s.tag}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DataVizSection({ d }: { d: DesignData }) {
+  const dv = d.dataViz || {}
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Data Visualization" description="Chart palettes, graph specs, and compliance for data-heavy interfaces" icon={BarChart3} />
+
+      <div className="p-4 rounded-xl border bg-card">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Categorical Palette</p>
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          {(dv.paletteColors || dv.categoricalPalette || []).map((c: any, i: number) => {
+            const hex = typeof c === "string" ? c : c.hex
+            const name = typeof c === "string" ? "" : c.name
+            return (
+              <div key={i} className="space-y-1 text-center">
+                <div className="h-10 rounded-lg border" style={{ backgroundColor: hex }} />
+                {name && <p className="text-[10px] text-muted-foreground truncate">{name}</p>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Graph Specs</p>
+        <div className="space-y-2">
+          {Object.entries(dv.graphSpecs || {}).map(([key, val]) => (
+            <div key={key} className="p-3 rounded-xl border">
+              <p className="text-sm font-medium capitalize">{key}</p>
+              <p className="text-xs text-muted-foreground mt-1">{val as string}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Interactive Specs</p>
+        <div className="space-y-2">
+          {Object.entries(dv.interactiveGraphSpecs || {}).map(([key, val]) => (
+            <div key={key} className="flex items-start justify-between p-3 rounded-xl border">
+              <span className="text-sm font-medium capitalize">{key}</span>
+              <span className="text-xs text-muted-foreground text-right max-w-[65%]">{val as string}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {dv.compliance && (
+        <div className="p-3 rounded-xl bg-green-50/50 border border-green-200">
+          <p className="text-xs text-green-800">{dv.compliance}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function inferPreviewControl(name: string): "button" | "badge" | "input" | "toggle" | "checkbox" | "radio" | "card" | "tooltip" | "tile" {
+  const n = name.toLowerCase()
+  if (n.includes("checkbox")) return "checkbox"
+  if (n.includes("radio") || n.includes("radion")) return "radio"
+  if (n.includes("button") || n.includes("action") || n.includes("cta")) return "button"
+  if (n.includes("badge") || n.includes("pill") || n.includes("tag") || n.includes("chip") || n.includes("label")) return "badge"
+  if (n.includes("tooltip") || n.includes("popover")) return "tooltip"
+  if (n.includes("card") || n.includes("panel") || n.includes("surface")) return "card"
+  if (n.includes("input") || n.includes("field") || n.includes("select") || n.includes("text") || n.includes("search")) return "input"
+  if (n.includes("toggle") || n.includes("switch")) return "toggle"
+  return "tile"
+}
+
+const SIZE_SCALE: Record<string, string> = {
+  sm: "sm", small: "sm", md: "md", medium: "md", default: "md", lg: "lg", large: "lg", xl: "xl",
+}
+
+function ComponentPreview({ name, tone }: { name: string; tone: string }) {
+  const kind = inferPreviewControl(name)
+  const size = SIZE_SCALE[name.toLowerCase()] || "md"
+  const compact = size === "sm"
+  const large = size === "lg"
+
+  const checkBox = (
+    <span className={`inline-flex shrink-0 items-center justify-center rounded border-2 ${compact ? "h-3.5 w-3.5" : large ? "h-5 w-5" : "h-4 w-4"} ${tone.split(" ")[0] === "bg-slate-800" ? "border-slate-800 bg-slate-800" : "border-slate-400 bg-white"}`}>
+      <span className="text-white">✓</span>
+    </span>
+  )
+
+  const radioBox = (
+    <span className={`inline-flex shrink-0 items-center justify-center rounded-full border-2 ${compact ? "h-3.5 w-3.5" : large ? "h-5 w-5" : "h-4 w-4"} ${tone.split(" ")[0] === "bg-slate-800" ? "border-slate-800" : "border-slate-400 bg-white"}`}>
+      <span className={`rounded-full bg-slate-700 ${compact ? "h-1.5 w-1.5" : large ? "h-2.5 w-2.5" : "h-2 w-2"}`} />
+    </span>
+  )
+
+  if (kind === "checkbox") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        {checkBox}
+        <span className={`font-medium text-slate-700 ${compact ? "text-[11px]" : large ? "text-sm" : "text-xs"}`}>Checkbox</span>
+      </span>
+    )
+  }
+  if (kind === "radio") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        {radioBox}
+        <span className={`font-medium text-slate-700 ${compact ? "text-[11px]" : large ? "text-sm" : "text-xs"}`}>Radio</span>
+      </span>
+    )
+  }
+  if (kind === "button") {
+    return (
+      <span className={`inline-flex shrink-0 items-center justify-center rounded-md bg-slate-800 font-medium text-white ${compact ? "h-8 px-3 text-xs" : large ? "h-12 px-6 text-base" : "h-10 px-4 text-sm"}`}>
+        {name.replace(/ button$/i, "") || "Button"}
+      </span>
+    )
+  }
+  if (kind === "badge") {
+    return (
+      <span className={`inline-flex shrink-0 items-center rounded-full font-medium ${compact ? "px-2.5 py-0.5 text-[11px]" : large ? "px-4 py-1.5 text-sm" : "px-3 py-1 text-xs"} ${tone}`}>
+        {name}
+      </span>
+    )
+  }
+  if (kind === "tooltip") {
+    return (
+      <span className="relative inline-flex items-center gap-2 shrink-0">
+        <span className={`inline-flex items-center rounded-md border border-slate-300 bg-white text-slate-500 ${compact ? "h-7 px-2.5 text-[11px]" : large ? "h-11 px-5 text-sm" : "h-9 px-3.5 text-xs"}`}>
+          {name}
+        </span>
+        <span className={`absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1 ${compact ? "text-[10px]" : "text-[11px]"} font-medium text-white`}>
+          Info tooltip
+        </span>
+      </span>
+    )
+  }
+  if (kind === "card") {
+    return (
+      <span className={`inline-flex shrink-0 flex-col justify-center rounded-lg border border-slate-200 bg-white ${compact ? "h-9 px-3" : large ? "h-14 px-5" : "h-11 px-4"} w-24`}>
+        <span className={`block truncate font-semibold text-slate-700 ${compact ? "text-[11px]" : "text-xs"}`}>{name}</span>
+        <span className="mt-0.5 block truncate text-[10px] text-slate-400">Card body</span>
+      </span>
+    )
+  }
+  if (kind === "input") {
+    return (
+      <span className={`inline-flex shrink-0 items-center rounded-md border border-slate-300 bg-white text-slate-400 ${compact ? "h-8 px-3 text-xs" : large ? "h-12 px-5 text-base" : "h-10 px-3.5 text-sm"}`}>
+        {name}…
+      </span>
+    )
+  }
+  if (kind === "toggle") {
+    return (
+      <span className={`inline-flex shrink-0 items-center rounded-full ${tone} ${compact ? "h-5 w-9" : large ? "h-8 w-14" : "h-6 w-11"}`}>
+        <span className={`rounded-full bg-white shadow ${compact ? "ml-1 h-3.5 w-3.5" : large ? "ml-1 h-6 w-6" : "ml-1 h-4 w-4"}`} />
+      </span>
+    )
+  }
+  return <span className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-[#F8FAFC] px-3 h-10 text-xs text-slate-500">{name}</span>
+}
+
+function stateTone(name: string): { bg: string; dot: string; text: string } {
+  const n = (name || "").toLowerCase()
+  if (n.includes("disabled") || n.includes("quiet")) return { bg: "bg-slate-100", dot: "bg-slate-400", text: "text-slate-500" }
+  if (n.includes("error") || n.includes("danger") || n.includes("destructive") || n.includes("failed")) return { bg: "bg-red-50 ring-red-200", dot: "bg-red-500", text: "text-red-700" }
+  if (n.includes("warning") || n.includes("caution")) return { bg: "bg-amber-50 ring-amber-200", dot: "bg-amber-500", text: "text-amber-700" }
+  if (n.includes("success") || n.includes("active") || n.includes("pressed")) return { bg: "bg-emerald-50 ring-emerald-200", dot: "bg-emerald-500", text: "text-emerald-700" }
+  if (n.includes("hover") || n.includes("focus") || n.includes("info")) return { bg: "bg-blue-50 ring-blue-200", dot: "bg-blue-500", text: "text-blue-700" }
+  return { bg: "bg-slate-50 ring-slate-200", dot: "bg-slate-400", text: "text-slate-600" }
+}
+
+function ComponentsSection({ d }: { d: DesignData }) {
+  const components = d.components || []
+  const variantsTotal = components.reduce((sum: number, c: any) => sum + (c.variants?.length || 0), 0)
+  const statesTotal = components.reduce((sum: number, c: any) => sum + (c.states?.length || 0), 0)
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader title="Component Library" description="Live building blocks — every control is rendered from live tokens, not mockups." icon={Layers} />
+
+      <div className="flex flex-wrap gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+          {components.length} components
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+          {variantsTotal} variants
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+          {statesTotal} states
+        </span>
+      </div>
+
+      <div className="space-y-5">
+        {components.map((comp: any, ci: number) => {
+          return (
+            <div key={comp.name} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-stretch gap-4 p-5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white">
+                  {String(ci + 1).padStart(2, "0")}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-base font-bold text-slate-900">{comp.name}</h4>
+                    <Badge variant="secondary" className="text-[10px] shrink-0 whitespace-nowrap">{comp.variants?.length || 0} variants</Badge>
+                  </div>
+                  {comp.description && <p className="text-xs text-slate-600 mt-1 leading-relaxed">{comp.description}</p>}
+                </div>
+              </div>
+
+              {comp.anatomy && comp.anatomy.length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-5 py-3 bg-slate-50/60">
+                  {comp.anatomy.map((a: string, ai: number) => (
+                    <span key={a} className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+                      {ai > 0 && <span className="text-slate-300">/</span>}
+                      <span className="rounded bg-white px-1.5 py-0.5 ring-1 ring-slate-200">{a}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {(comp.variants?.length > 0 || comp.sizes?.length > 0 || comp.states?.length > 0) && (
+                <div className="border-t border-slate-100 bg-[#F8FAFC] p-5">
+                  {comp.variants?.length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Variants</p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {comp.variants.map((v: any) => (
+                          <div key={v.name} className="flex items-stretch gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                            <div className="flex w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-[#F8FAFC] px-2 py-3">
+                              <ComponentPreview name={v.name} tone="bg-slate-800 text-white" />
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col justify-center">
+                              <p className="text-sm font-medium text-slate-800 truncate">{v.name}</p>
+                              {v.description && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed line-clamp-2">{v.description}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {comp.variants[0]?.usage && (
+                        <p className="mt-3 text-xs text-slate-500"><span className="font-semibold text-slate-700">Usage:</span> {comp.variants[0].usage}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {comp.sizes?.length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">Sizes</p>
+                      <div className="flex flex-wrap items-end gap-6 rounded-xl border border-slate-200 bg-white p-4">
+                        {comp.sizes.map((s: any) => (
+                          <div key={s.name} className="flex flex-col items-center gap-2 min-w-0">
+                            <div className="flex h-20 w-28 items-end justify-center rounded-lg border border-dashed border-slate-200 bg-[#F8FAFC] px-2 pb-3">
+                              <ComponentPreview name={s.name || "sm"} tone="bg-slate-800 text-white" />
+                            </div>
+                            <p className="text-xs font-medium text-slate-700 capitalize">{s.name}</p>
+                            {Object.entries(s).filter(([k]) => k !== "name").length > 0 && (
+                              <p className="text-[10px] text-slate-500 text-center">
+                                {Object.entries(s).filter(([k]) => k !== "name").map(([k, v]) => `${k} ${v}`).join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {comp.states?.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">States</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                        {comp.states.map((s: any) => {
+                          const tone = stateTone(s.name || "")
+                          return (
+                            <div key={s.name} className="rounded-xl border border-slate-200 bg-white p-3">
+                              <div className="flex h-12 items-center justify-center">
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 ${tone.bg} ${tone.text}`}>
+                                  <span className={`h-2 w-2 rounded-full ${tone.dot}`} />
+                                  {s.name}
+                                </span>
+                              </div>
+                              {s.description && <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">{s.description}</p>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {comp.accessibility && (
+                <div className="flex items-start gap-2.5 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
+                  <Accessibility className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-600 leading-relaxed">{comp.accessibility}</p>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function PatternsSection({ d }: { d: DesignData }) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Design Patterns" description="Common page layouts and templates" icon={Layout} />
+      <div className="space-y-4">
+        {(d.patterns || []).map((pattern: any) => (
+          <Card key={pattern.name}>
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <CardTitle className="text-base">{pattern.name}</CardTitle>
+                <Badge variant="outline" className="text-[10px]">{pattern.sections?.length || 0} sections</Badge>
+              </div>
+              {pattern.description && <p className="text-xs text-muted-foreground mt-1">{pattern.description}</p>}
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pattern.sections && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-2">Sections</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {pattern.sections.map((s: string) => (
+                      <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {pattern.variants && pattern.variants.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-2">Variants</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {pattern.variants.map((v: any) => (
+                      <div key={v.name} className="p-3 rounded-xl border">
+                        <p className="text-sm font-medium">{v.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{v.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {pattern.states && pattern.states.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-2">States</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 gap-3">
+                    {pattern.states.map((s: any) => (
+                      <div key={s.name} className="p-3 rounded-xl border">
+                        <p className="text-sm font-medium">{s.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MotionSection({ d }: { d: DesignData }) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Motion" description="Animation durations, easing curves, and interaction guidelines" icon={Monitor} />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Durations</p>
+        <div className="grid grid-cols-5 gap-3">
+          {Object.entries(d.motion?.duration || {}).map(([key, val]) => (
+            <div key={key} className="p-4 rounded-xl border text-center">
+              <p className="text-sm font-medium capitalize">{key}</p>
+              <p className="text-lg font-bold text-primary mt-1">{val as string}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Easing Curves</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {Object.entries(d.motion?.easing || {}).map(([key, val]) => (
+            <div key={key} className="p-4 rounded-xl border">
+              <p className="text-sm font-medium capitalize">{key}</p>
+              <p className="text-xs font-mono text-muted-foreground mt-1">{val as string}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-4">Animation Guidelines</p>
+        <div className="space-y-3">
+          {(d.motion?.guidelines || []).map((g: any) => (
+            <Card key={g.type}>
+              <CardContent className="pt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm">{g.type}</h4>
+                  <Badge variant="secondary" className="text-[10px]">{g.duration}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{g.description}</p>
+                <p className="text-xs text-muted-foreground font-mono">Easing: {g.easing}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AccessibilitySection({ d }: { d: DesignData }) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Accessibility" description="WCAG compliance, contrast reports, and best practices" icon={Accessibility} />
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="p-4 rounded-xl border text-center">
+          <p className="text-2xl font-bold text-primary">{d.accessibility?.level || "AA"}</p>
+          <p className="text-xs text-muted-foreground mt-1">Compliance</p>
+        </div>
+        <div className="p-4 rounded-xl border text-center">
+          <p className="text-2xl font-bold text-primary">44x44px</p>
+          <p className="text-xs text-muted-foreground mt-1">Touch Targets</p>
+        </div>
+        <div className="p-4 rounded-xl border text-center">
+          <p className="text-2xl font-bold text-primary">4.5:1</p>
+          <p className="text-xs text-muted-foreground mt-1">Min Contrast</p>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">WCAG Principles</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {(d.accessibility?.principles || []).map((p: string) => {
+            const [title, ...desc] = p.split(" — ")
+            return (
+              <div key={p} className="p-4 rounded-xl border">
+                <p className="font-medium text-sm">{title}</p>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{desc.join(" — ")}</p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Contrast Report</p>
+        <div className="space-y-2">
+          {Object.entries(d.accessibility?.contrastReport || {}).map(([key, val]) => (
+            <div key={key} className="flex items-center justify-between p-3 rounded-xl border">
+              <div className="flex items-center gap-2.5">
+                <Check className="h-4 w-4 text-green-500" />
+                <span className="text-sm">{key}</span>
+              </div>
+              <Badge variant="outline" className="text-xs">{val as string}</Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Best Practices</p>
+        <div className="space-y-2">
+          {(d.accessibility?.bestPractices || []).map((p: string) => (
+            <DoCard key={p}>{p}</DoCard>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">ARIA Suggestions</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+          {(d.accessibility?.ariaSuggestions || []).map((a: string) => (
+            <div key={a} className="p-3 rounded-xl border">
+              <code className="text-xs font-mono text-primary">{a}</code>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DocsSection({ d }: { d: DesignData }) {
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Documentation" description="Getting started guide, usage guidelines, and developer notes" icon={FileText} />
+
+      <div className="p-4 rounded-xl border">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">Overview</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{d.documentation?.overview}</p>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Getting Started</p>
+        <div className="space-y-2">
+          {(d.documentation?.gettingStarted || []).map((step: string) => (
+            <div key={step} className="flex items-start gap-3 p-3 rounded-xl border">
+              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-primary">{(d.documentation?.gettingStarted?.indexOf(step) || 0) + 1}</span>
+              </div>
+              <p className="text-sm">{step}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3 text-green-600">Do&apos;s</p>
+          <div className="space-y-2">
+            {(d.documentation?.dos || []).map((item: string) => (
+              <DoCard key={item}>{item}</DoCard>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3 text-red-600">Don&apos;ts</p>
+          <div className="space-y-2">
+            {(d.documentation?.donts || []).map((item: string) => (
+              <DontCard key={item}>{item}</DontCard>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Developer Notes</p>
+        <div className="space-y-2">
+          {(d.documentation?.developerNotes || []).map((note: string) => (
+            <div key={note} className="flex items-start gap-2.5 p-3 rounded-xl border">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary mt-2 shrink-0" />
+              <p className="text-sm">{note}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}

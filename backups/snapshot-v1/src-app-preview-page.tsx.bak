@@ -1,0 +1,293 @@
+"use client"
+
+import { Suspense, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ArrowLeft, Palette, Loader2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { redirect } from "next/navigation"
+
+type TokenColors = {
+  primary?: string
+  primaryLight?: string
+  primaryDark?: string
+  secondary?: string
+  accent?: string
+  neutral?: Record<string, string>
+  semantic?: Record<string, string>
+}
+
+type RawProject = {
+  tokens?: {
+    colors?: TokenColors
+    typography?: { fontFamily?: string }
+    spacing?: { container?: string }
+    radius?: string
+  }
+  spacingLayout?: { containerWidth?: string }
+}
+
+type PreviewData = {
+  colors: {
+    primary: string
+    primaryLight: string
+    primaryDark: string
+    secondary: string
+    accent: string
+    neutral: Record<string, string>
+    semantic: Record<string, string>
+  }
+  typography: { fontFamily: string }
+  spacing: { container: string }
+  radius: string
+}
+
+const DEFAULT_TOKENS: PreviewData = {
+  colors: {
+    primary: "#6366f1",
+    primaryLight: "#a5b4fc",
+    primaryDark: "#4f46e5",
+    secondary: "#8b5cf6",
+    accent: "#8b5cf6",
+    neutral: { 100: "#f5f5f5", 200: "#e5e5e5", 700: "#404040", 900: "#171717" },
+    semantic: { success: "#22c55e", error: "#ef4444" },
+  },
+  typography: {
+    fontFamily: "Inter, system-ui, sans-serif",
+  },
+  spacing: { container: "1200px" },
+  radius: "8px",
+}
+
+function normalizeTokens(raw: RawProject): PreviewData {
+  const t = raw?.tokens || {}
+  const spacingLayout = raw?.spacingLayout || {}
+  return {
+    colors: {
+      primary: t?.colors?.primary || DEFAULT_TOKENS.colors.primary,
+      primaryLight: t?.colors?.primaryLight || DEFAULT_TOKENS.colors.primaryLight,
+      primaryDark: t?.colors?.primaryDark || t?.colors?.primary || DEFAULT_TOKENS.colors.primary,
+      secondary: t?.colors?.secondary || DEFAULT_TOKENS.colors.secondary,
+      accent: t?.colors?.accent || DEFAULT_TOKENS.colors.accent,
+      neutral: {
+        ...(DEFAULT_TOKENS.colors.neutral || {}),
+        ...(t?.colors?.neutral || {}),
+      },
+      semantic: {
+        ...(DEFAULT_TOKENS.colors.semantic || {}),
+        ...(t?.colors?.semantic || {}),
+      },
+    },
+    typography: {
+      fontFamily: t?.typography?.fontFamily || DEFAULT_TOKENS.typography.fontFamily,
+    },
+    spacing: {
+      container: spacingLayout?.containerWidth || t?.spacing?.container || DEFAULT_TOKENS.spacing.container,
+    },
+    radius: t?.radius || DEFAULT_TOKENS.radius,
+  }
+}
+
+const STAT_VALUES = [14, 7, 9]
+
+function PreviewContent() {
+  const { status } = useSession()
+  const searchParams = useSearchParams()
+  const id = searchParams.get("id")
+  const [data, setData] = useState<PreviewData>(DEFAULT_TOKENS)
+  const [loading, setLoading] = useState<boolean>(() => !!id)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    if (status !== "authenticated" || !id) return
+    let cancelled = false
+    fetch(`/api/projects/${id}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("not found")
+        const project: RawProject = await res.json()
+        if (!cancelled) setData(normalizeTokens(project))
+      })
+      .catch(() => {
+        if (!cancelled) setNotFound(true)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [status, id])
+
+  if (status === "loading") {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") redirect("/login")
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const primary = data.colors.primary
+  const showEmpty = !id || notFound
+
+  return (
+    <div className="flex-1">
+      <header className="border-b" style={{ borderColor: data.colors.neutral[200] }}>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href={id ? `/project/${id}` : "/dashboard"}>
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Palette className="h-6 w-6" style={{ color: primary }} />
+            <span className="font-bold text-xl">Preview</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        {showEmpty ? (
+          <div className="text-center space-y-4 py-20">
+            <Palette className="h-10 w-10 mx-auto text-muted-foreground" />
+            <h2 className="text-xl font-bold">Project not found</h2>
+            <p className="text-sm text-muted-foreground">
+              {id ? "This project doesn't exist or you don't have access to it." : "No project selected."}
+            </p>
+            <Link href="/dashboard">
+              <Button variant="outline">Back to Dashboard</Button>
+            </Link>
+          </div>
+        ) : (
+          <Tabs defaultValue="login">
+            <TabsList>
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="landing">Landing</TabsTrigger>
+              <TabsTrigger value="pricing">Pricing</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="login" className="mt-6">
+              <Card className="max-w-md mx-auto">
+                <CardHeader className="text-center">
+                  <CardTitle>Sign In</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Email</label>
+                    <div className="h-10 rounded-lg border px-3 flex items-center text-sm text-muted-foreground" style={{ borderRadius: data.radius, borderColor: data.colors.neutral[200] }}>
+                      name@example.com
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Password</label>
+                    <div className="h-10 rounded-lg border px-3 flex items-center text-sm text-muted-foreground" style={{ borderRadius: data.radius, borderColor: data.colors.neutral[200] }}>
+                      ********
+                    </div>
+                  </div>
+                  <Button className="w-full" style={{ backgroundColor: primary, borderRadius: data.radius }}>
+                    Sign In
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="dashboard" className="mt-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold">Dashboard</h2>
+                  <Button style={{ backgroundColor: primary, borderRadius: data.radius }}>New Project</Button>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {["Total Projects", "Active", "Completed"].map((stat, i) => (
+                    <Card key={stat}>
+                      <CardContent className="pt-6">
+                        <p className="text-sm text-muted-foreground">{stat}</p>
+                        <p className="text-3xl font-bold" style={{ color: primary }}>{STAT_VALUES[i]}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center justify-between p-4 rounded-lg border" style={{ borderColor: data.colors.neutral[200] }}>
+                          <div>
+                            <p className="font-medium">Design System {i}</p>
+                            <p className="text-sm text-muted-foreground">Updated 2 days ago</p>
+                          </div>
+                          <div className="h-6 w-16 rounded bg-muted" style={{ backgroundColor: data.colors.neutral[100] }} />
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="landing" className="mt-6">
+              <div className="text-center space-y-8 py-12">
+                <div className="inline-flex px-4 py-1.5 rounded-full border text-sm" style={{ borderColor: data.colors.neutral[200] }}>
+                  AI-Powered
+                </div>
+                <h1 className="text-5xl font-bold tracking-tight">
+                  Build Better Design Systems
+                </h1>
+                <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+                  Generate complete design systems in minutes with AI.
+                </p>
+                <Button size="lg" style={{ backgroundColor: primary, borderRadius: data.radius }}>
+                  Get Started Free
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="pricing" className="mt-6">
+              <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                {[
+                  { name: "Free", price: "$0", features: ["1 project"] },
+                  { name: "Pro", price: "$19", features: ["Unlimited projects"] },
+                  { name: "Team", price: "$49", features: ["Team workspace"] },
+                ].map(({ name, price, features }) => (
+                  <Card key={name}>
+                    <CardContent className="pt-6 text-center space-y-4">
+                      <h3 className="font-semibold text-lg">{name}</h3>
+                      <p className="text-3xl font-bold" style={{ color: primary }}>{price}<span className="text-base font-normal text-muted-foreground">/mo</span></p>
+                      <ul className="space-y-2">
+                        {features.map((f) => (
+                          <li key={f} className="text-sm text-muted-foreground">{f}</li>
+                        ))}
+                      </ul>
+                      <Button className="w-full" variant="outline" style={{ borderRadius: data.radius }}>Choose {name}</Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      </main>
+    </div>
+  )
+}
+
+export default function PreviewPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center">Loading...</div>}>
+      <PreviewContent />
+    </Suspense>
+  )
+}
